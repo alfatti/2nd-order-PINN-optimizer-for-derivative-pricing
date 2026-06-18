@@ -5,6 +5,7 @@ optax
 scipy
 numpy
 matplotlib
+nbformat      # only needed to rebuild the notebook
 
 # Forked Optimistix providing SSBFGS / SSBroyden (not on PyPI):
 #   pip install "git+https://github.com/raj-brown/optimistix.git@SSBFGS"

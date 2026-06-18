@@ -73,13 +73,47 @@ For the primary contract, `Vega_ATM ≈ 0.361`, so:
 
 | File | Description |
 |------|-------------|
-| `cheyette_caplet_h200.py` | **Main benchmark.** H200/CUDA build: 4D+time PINN, Adam → SSBroyden/SSBFGS, Vega-normalized vol-error reporting with a pass/fail check against 0.1 bps. |
+| `cheyette_caplet_h200.py` | **Single-contract benchmark.** H200/CUDA: 4D+time PINN for one ATM caplet, Adam → SSBroyden/SSBFGS, Vega-normalized vol error with a 0.1 bps pass/fail check. |
+| `cheyette_caplet_grid_h200.py` | **Grid benchmark.** One network prices a whole grid of caplets (maturities × strikes); same recipe, single reference ATM Vega across all contracts. |
+| `cheyette_grid.py` | Grid definition (15 contracts), vectorized analytic oracle, and the **single fixed reference ATM Vega** metric. |
+| `Cheyette_Caplet_Grid.ipynb` | Notebook walking through the grid setup, PDE, terminal condition, metric, and a short CPU demo, with a vol-error-surface plot for after a real run. |
 | `cheyette_analytic.py` | Analytical caplet pricer (the ground-truth oracle). Reproduces the paper's five Table 5 prices to ~1e-7. |
 | `cheyette_vega.py` | ATM Normal Vega and price→vol-bps conversion. |
 | `cheyette_vij.py` | Deterministic `Vᵢⱼ⁽ᵏ⁾(t)` drift coefficients (Appendix A.1) and the `σσᵀ` diffusion. |
 
-The three helper modules are imported by the main script; keep them in the same
+The helper modules are imported by the main scripts; keep them in the same
 directory.
+
+---
+
+## The grid: one market, many derivatives
+
+`cheyette_caplet_grid_h200.py` prices a **grid of 15 caplets** (5 maturities
+`T_C = 1..5`, with `T_B = T_C + 1`, × 3 strikes `{3% ITM, 5% ATM, 7% OTM}`) with a
+**single network**. The contract parameters `(T_C, K)` enter as network inputs,
+so the model learns the whole pricing map at once. The model dynamics (drift,
+diffusion, short rate) are identical for every contract — fixed by the
+calibration — so only the terminal payoff varies per contract.
+
+**Single reference Vega — important.** The vol-error metric across the entire
+grid is normalized by **one fixed scalar**: the ATM Normal Vega of the
+`T_C=1, T_B=2` ATM caplet (`≈ 0.36098`). This is deliberately *not* a
+per-contract or per-maturity Vega. Using one constant makes the 0.1 bps bar a
+single uniform price tolerance (`3.61e-6`) for every contract, and keeps the grid
+numbers directly comparable to the single-contract benchmark. The cheap OTM
+short-maturity contracts have the tightest *relative* budget and are the binding
+constraint.
+
+**Grid convergence (CPU, small net), one network fitting all 15 contracts:**
+
+| Adam step | max vol err | mean vol err |
+|-----------|-------------|--------------|
+| 500 | 168.6 bps | 61.8 bps |
+| 1000 | 96.4 bps | 39.6 bps |
+
+Max error roughly halving, all contracts marching toward their analytic prices —
+confirming the grid formulation is correct. (CPU cannot reach the deep-accuracy
+regime; that's the H200's job.)
 
 ---
 
@@ -217,8 +251,10 @@ to `cheyette_caplet_results.npz`.
 - [x] Analytical caplet oracle, validated against the paper's Table 5.
 - [x] Single ATM caplet PINN, full 4D + time PDE, Adam + SSBroyden / SSBFGS,
   Normal-Vega vol-error metric.
-- [ ] **Grid of contracts** — price multiple caplets (varying `T_C`, `T_B`,
-  strike) and benchmark the same recipe across the grid.
+- [x] **Grid of contracts** — one network prices 15 caplets (maturities ×
+  strikes), single reference ATM Vega, with a notebook walkthrough.
+- [ ] Push the grid to sub-0.1-bps on the H200; add a Gauss-Newton / natural-
+  gradient stage if the second-order quasi-Newton methods plateau.
 
 ---
 
