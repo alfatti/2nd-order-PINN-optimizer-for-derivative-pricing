@@ -1,0 +1,10 @@
+# Core stack
+jax[cuda12]   # use jax[cpu] for a CPU-only smoke test
+equinox
+optax
+scipy
+numpy
+matplotlib
+
+# Forked Optimistix providing SSBFGS / SSBroyden (not on PyPI):
+#   pip install "git+https://github.com/raj-brown/optimistix.git@SSBFGS"
